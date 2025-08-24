@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import '../base/app_config.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/base/app_config.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// 数据库管理器
 /// 封装SQLite数据库操作

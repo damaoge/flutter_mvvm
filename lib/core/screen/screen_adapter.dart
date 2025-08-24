@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// 屏幕适配管理器
 /// 提供多屏幕尺寸的响应式布局支持

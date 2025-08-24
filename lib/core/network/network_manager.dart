@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import '../base/app_config.dart';
-import '../base/base_model.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/base/app_config.dart';
+import 'package:flutter_mvvm/core/base/base_model.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 import 'network_interceptor.dart';
 import 'network_exception.dart';
 

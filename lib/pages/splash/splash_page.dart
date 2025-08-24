@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
-import '../../core/base/base_view.dart';
-import '../../core/base/base_viewmodel.dart';
-import '../../core/utils/logger_util.dart';
-import '../../core/router/router_manager.dart';
-import '../../core/screen/screen_adapter.dart';
-import '../../core/base/app_config.dart';
+import 'package:flutter_mvvm/core/base/base_view.dart';
+import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
+import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
+import 'package:flutter_mvvm/core/base/app_config.dart';
 
 /// 启动页ViewModel
 class SplashViewModel extends BaseViewModel {
@@ -19,9 +17,7 @@ class SplashViewModel extends BaseViewModel {
 
   /// 初始化应用
   Future<void> _initializeApp() async {
-    try {
-      setLoading(true);
-      
+    await safeExecute(() async {
       // 模拟初始化过程
       await Future.delayed(const Duration(seconds: 2));
       
@@ -30,17 +26,15 @@ class SplashViewModel extends BaseViewModel {
       
       // 跳转到相应页面
       if (isLoggedIn) {
-        RouterManager.instance.pushAndClearStack('/home');
+        navigateAndClearStack('/home');
       } else {
-        RouterManager.instance.pushAndClearStack('/home'); // 暂时直接跳转到首页
+        navigateAndClearStack('/home'); // 暂时直接跳转到首页
       }
-    } catch (e) {
-      LoggerUtil.e('应用初始化失败: $e');
+    }, onError: (error) {
+      LoggerUtil.e('应用初始化失败: $error');
       // 即使初始化失败也跳转到首页
-      RouterManager.instance.pushAndClearStack('/home');
-    } finally {
-      setLoading(false);
-    }
+      navigateAndClearStack('/home');
+    });
   }
 
   /// 检查登录状态

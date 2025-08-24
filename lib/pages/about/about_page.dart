@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
 
-import '../../core/base/base_view.dart';
-import '../../core/base/base_viewmodel.dart';
-import '../../core/base/app_config.dart';
-import '../../core/utils/logger_util.dart';
-import '../../core/screen/screen_adapter.dart';
-import '../../core/router/router_manager.dart';
+import 'package:flutter_mvvm/core/base/base_view.dart';
+import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
+import 'package:flutter_mvvm/core/base/app_config.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
+import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
 
 /// 关于页面ViewModel
 class AboutViewModel extends BaseViewModel {
@@ -20,48 +18,28 @@ class AboutViewModel extends BaseViewModel {
   /// 复制版本信息
   void copyVersion() {
     Clipboard.setData(ClipboardData(text: AppConfig.version));
-    RouterManager.instance.showSnackbar(
-      '复制成功',
-      '版本号已复制到剪贴板',
-      SnackPosition.TOP,
-    );
+    showSuccess('版本号已复制到剪贴板', title: '复制成功');
   }
 
   /// 复制包名
   void copyPackageName() {
     Clipboard.setData(ClipboardData(text: AppConfig.packageName));
-    RouterManager.instance.showSnackbar(
-      '复制成功',
-      '包名已复制到剪贴板',
-      SnackPosition.TOP,
-    );
+    showSuccess('包名已复制到剪贴板', title: '复制成功');
   }
 
   /// 检查更新
   void checkUpdate() {
-    RouterManager.instance.showSnackbar(
-      '检查更新',
-      '当前已是最新版本',
-      SnackPosition.TOP,
-    );
+    showInfo('当前已是最新版本', title: '检查更新');
   }
 
   /// 用户协议
   void showUserAgreement() {
-    RouterManager.instance.showSnackbar(
-      '用户协议',
-      '用户协议功能待实现',
-      SnackPosition.TOP,
-    );
+    showInfo('用户协议功能待实现', title: '用户协议');
   }
 
   /// 隐私政策
   void showPrivacyPolicy() {
-    RouterManager.instance.showSnackbar(
-      '隐私政策',
-      '隐私政策功能待实现',
-      SnackPosition.TOP,
-    );
+    showInfo('隐私政策功能待实现', title: '隐私政策');
   }
 }
 

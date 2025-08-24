@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../core/base/base_view.dart';
-import '../../core/base/base_viewmodel.dart';
-import '../../core/utils/logger_util.dart';
-import '../../core/localization/localization_manager.dart';
-import '../../core/screen/screen_adapter.dart';
-import '../../core/theme/theme_manager.dart';
-import '../../core/router/router_manager.dart';
-import '../../core/storage/storage_manager.dart';
-import '../../core/cache/cache_manager.dart';
-import '../../core/widgets/loading_dialog.dart';
+import 'package:flutter_mvvm/core/base/base_view.dart';
+import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
+import 'package:flutter_mvvm/core/localization/localization_manager.dart';
+import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
+import 'package:flutter_mvvm/core/theme/theme_manager.dart';
+import 'package:flutter_mvvm/core/storage/storage_manager.dart';
+import 'package:flutter_mvvm/core/cache/cache_manager.dart';
 
 /// 设置页ViewModel
 class SettingsViewModel extends BaseViewModel {
@@ -94,7 +92,7 @@ class SettingsViewModel extends BaseViewModel {
   /// 清除缓存
   Future<void> clearCache() async {
     try {
-      LoadingDialog.show('清除缓存中...');
+      setLoading(true);
       
       // 清除内存缓存
       await CacheManager.instance.clearMemoryCache();
@@ -110,41 +108,40 @@ class SettingsViewModel extends BaseViewModel {
       
       notifyListeners();
       
-      LoadingDialog.dismiss();
-      LoadingDialog.showSuccess('缓存清除成功');
+      showSuccess('缓存清除成功');
       
       LoggerUtil.d('缓存已清除');
     } catch (e) {
-      LoadingDialog.dismiss();
-      LoadingDialog.showError('缓存清除失败');
+      showError('缓存清除失败');
       LoggerUtil.e('清除缓存失败: $e');
+    } finally {
+      setLoading(false);
     }
   }
 
   /// 关于应用
   void showAbout() {
-    RouterManager.instance.push('/about');
+    navigateTo('/about');
   }
 
   /// 退出登录
   Future<void> logout() async {
     try {
-      LoadingDialog.show('退出登录中...');
+      setLoading(true);
       
       // 清除用户数据
       await StorageManager.instance.remove('user_token');
       await StorageManager.instance.remove('user_info');
       
-      LoadingDialog.dismiss();
-      
       // 跳转到登录页
-      RouterManager.instance.pushAndClearStack('/login');
+      navigateAndClearStack('/login');
       
       LoggerUtil.d('用户已退出登录');
     } catch (e) {
-      LoadingDialog.dismiss();
-      LoadingDialog.showError('退出登录失败');
+      showError('退出登录失败');
       LoggerUtil.e('退出登录失败: $e');
+    } finally {
+      setLoading(false);
     }
   }
 }

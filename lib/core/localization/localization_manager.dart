@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../storage/storage_manager.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/storage/storage_manager.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// 多语言管理器
 /// 提供应用的多语言支持功能

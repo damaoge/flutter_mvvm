@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'base_view_model.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// View基类
 /// 提供MVVM架构中View的基础功能

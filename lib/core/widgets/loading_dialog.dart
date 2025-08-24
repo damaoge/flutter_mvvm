@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import '../theme/theme_manager.dart';
-import '../screen/screen_adapter.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/theme/theme_manager.dart';
+import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// 统一的等待弹窗管理器
 /// 提供加载、成功、错误等各种状态的弹窗显示

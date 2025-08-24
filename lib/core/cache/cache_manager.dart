@@ -1,276 +1,112 @@
-import 'dart:convert';
-import 'package:hive_flutter/hive_flutter.dart';
-import '../base/app_config.dart';
-import '../utils/logger_util.dart';
-import '../database/database_manager.dart';
+import 'memory_cache_manager.dart';
+import 'persistent_cache_manager.dart';
+import 'database_cache_manager.dart';
+import 'cache_types.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
+import 'package:flutter_mvvm/core/patterns/cache_factory.dart';
 
-/// 缓存管理器
-/// 提供内存缓存和持久化缓存功能
+/// 统一缓存管理器
+/// 提供统一的缓存接口，整合内存缓存、持久化缓存和数据库缓存
 class CacheManager {
   static final CacheManager _instance = CacheManager._internal();
   static CacheManager get instance => _instance;
   
-  // 内存缓存
-  final Map<String, CacheItem> _memoryCache = {};
+  // 各类型缓存管理器
+  late final MemoryCacheManager _memoryCache;
+  late final PersistentCacheManager _persistentCache;
+  late final DatabaseCacheManager _databaseCache;
   
-  // Hive缓存盒子
-  Box<String>? _cacheBox;
+  CacheManager._internal() {
+    _memoryCache = MemoryCacheManager.instance;
+    _persistentCache = PersistentCacheManager.instance;
+    _databaseCache = DatabaseCacheManager.instance;
+  }
   
-  CacheManager._internal();
+  /// 使用工厂模式获取缓存管理器
+  ICacheManager getCacheManagerByType(CacheType type) {
+    return CacheFactory.getCacheManager(type);
+  }
+  
+  /// 智能选择缓存管理器
+  ICacheManager getSmartCacheManager({
+    required int dataSize,
+    required bool needsPersistence,
+    required bool frequentAccess,
+    required bool needsQuery,
+  }) {
+    return CacheFactory.getRecommendedCacheManager(
+      dataSize: dataSize,
+      needsPersistence: needsPersistence,
+      frequentAccess: frequentAccess,
+      needsQuery: needsQuery,
+    );
+  }
   
   /// 初始化缓存管理器
   Future<void> init() async {
     try {
-      // 初始化Hive缓存
-      _cacheBox = await Hive.openBox<String>('cache_box');
+      // 初始化持久化缓存
+      await _persistentCache.init();
       
-      // 清理过期的内存缓存
-      _cleanExpiredMemoryCache();
+      // 清理过期缓存
+      await cleanAllExpired();
       
-      // 清理过期的持久化缓存
-      await _cleanExpiredPersistentCache();
-      
-      LoggerUtil.i('缓存管理器初始化完成');
+      LoggerUtil.i('统一缓存管理器初始化完成');
     } catch (e) {
-      LoggerUtil.e('缓存管理器初始化失败: $e');
+      LoggerUtil.e('统一缓存管理器初始化失败: $e');
       rethrow;
     }
   }
   
-  /// 设置内存缓存
-  void setMemoryCache(
-    String key,
-    dynamic value, {
-    Duration? expiration,
-  }) {
-    try {
-      final expireTime = expiration != null
-          ? DateTime.now().add(expiration)
-          : null;
-      
-      _memoryCache[key] = CacheItem(
-        value: value,
-        expireTime: expireTime,
-        createdAt: DateTime.now(),
-      );
-      
-      LoggerUtil.cache('SET_MEMORY', key, value: value);
-    } catch (e) {
-      LoggerUtil.e('设置内存缓存失败: $key, error: $e');
-    }
+  // 内存缓存相关方法
+  void setMemoryCache(String key, dynamic value, {Duration? expiration}) {
+    _memoryCache.set(key, value, expiration: expiration);
   }
   
-  /// 获取内存缓存
   T? getMemoryCache<T>(String key) {
-    try {
-      final item = _memoryCache[key];
-      if (item == null) {
-        LoggerUtil.cache('GET_MEMORY', key, value: 'NOT_FOUND');
-        return null;
-      }
-      
-      if (item.isExpired) {
-        _memoryCache.remove(key);
-        LoggerUtil.cache('GET_MEMORY', key, value: 'EXPIRED');
-        return null;
-      }
-      
-      LoggerUtil.cache('GET_MEMORY', key, value: item.value);
-      return item.value as T?;
-    } catch (e) {
-      LoggerUtil.e('获取内存缓存失败: $key, error: $e');
-      return null;
-    }
+    return _memoryCache.get<T>(key);
   }
   
-  /// 删除内存缓存
   void removeMemoryCache(String key) {
-    try {
-      _memoryCache.remove(key);
-      LoggerUtil.cache('REMOVE_MEMORY', key);
-    } catch (e) {
-      LoggerUtil.e('删除内存缓存失败: $key, error: $e');
-    }
+    _memoryCache.remove(key);
   }
   
-  /// 清空内存缓存
   void clearMemoryCache() {
-    try {
-      _memoryCache.clear();
-      LoggerUtil.cache('CLEAR_MEMORY', 'ALL');
-    } catch (e) {
-      LoggerUtil.e('清空内存缓存失败: $e');
-    }
+    _memoryCache.clear();
   }
   
-  /// 设置持久化缓存（Hive）
-  Future<void> setPersistentCache(
-    String key,
-    dynamic value, {
-    Duration? expiration,
-  }) async {
-    try {
-      if (_cacheBox == null) {
-        throw Exception('缓存盒子未初始化');
-      }
-      
-      final cacheData = {
-        'value': value,
-        'expireTime': expiration != null
-            ? DateTime.now().add(expiration).millisecondsSinceEpoch
-            : null,
-        'createdAt': DateTime.now().millisecondsSinceEpoch,
-      };
-      
-      await _cacheBox!.put(key, jsonEncode(cacheData));
-      LoggerUtil.cache('SET_PERSISTENT', key, value: value);
-    } catch (e) {
-      LoggerUtil.e('设置持久化缓存失败: $key, error: $e');
-    }
+  // 持久化缓存相关方法
+  Future<void> setPersistentCache(String key, dynamic value, {Duration? expiration}) async {
+    await _persistentCache.set(key, value, expiration: expiration);
   }
   
-  /// 获取持久化缓存（Hive）
   Future<T?> getPersistentCache<T>(String key) async {
-    try {
-      if (_cacheBox == null) {
-        throw Exception('缓存盒子未初始化');
-      }
-      
-      final cacheDataString = _cacheBox!.get(key);
-      if (cacheDataString == null) {
-        LoggerUtil.cache('GET_PERSISTENT', key, value: 'NOT_FOUND');
-        return null;
-      }
-      
-      final cacheData = jsonDecode(cacheDataString) as Map<String, dynamic>;
-      final expireTime = cacheData['expireTime'] as int?;
-      
-      if (expireTime != null && DateTime.now().millisecondsSinceEpoch > expireTime) {
-        await _cacheBox!.delete(key);
-        LoggerUtil.cache('GET_PERSISTENT', key, value: 'EXPIRED');
-        return null;
-      }
-      
-      final value = cacheData['value'];
-      LoggerUtil.cache('GET_PERSISTENT', key, value: value);
-      return value as T?;
-    } catch (e) {
-      LoggerUtil.e('获取持久化缓存失败: $key, error: $e');
-      return null;
-    }
+    return await _persistentCache.get<T>(key);
   }
   
-  /// 删除持久化缓存
   Future<void> removePersistentCache(String key) async {
-    try {
-      if (_cacheBox == null) {
-        throw Exception('缓存盒子未初始化');
-      }
-      
-      await _cacheBox!.delete(key);
-      LoggerUtil.cache('REMOVE_PERSISTENT', key);
-    } catch (e) {
-      LoggerUtil.e('删除持久化缓存失败: $key, error: $e');
-    }
+    await _persistentCache.remove(key);
   }
   
-  /// 清空持久化缓存
   Future<void> clearPersistentCache() async {
-    try {
-      if (_cacheBox == null) {
-        throw Exception('缓存盒子未初始化');
-      }
-      
-      await _cacheBox!.clear();
-      LoggerUtil.cache('CLEAR_PERSISTENT', 'ALL');
-    } catch (e) {
-      LoggerUtil.e('清空持久化缓存失败: $e');
-    }
+    await _persistentCache.clear();
   }
   
-  /// 设置数据库缓存
-  Future<void> setDatabaseCache(
-    String key,
-    dynamic value, {
-    Duration? expiration,
-  }) async {
-    try {
-      final expireTime = expiration != null
-          ? DateTime.now().add(expiration).millisecondsSinceEpoch
-          : DateTime.now().add(Duration(milliseconds: AppConfig.cacheExpireTime)).millisecondsSinceEpoch;
-      
-      await DatabaseManager.instance.insert('cache', {
-        'key': key,
-        'value': jsonEncode(value),
-        'expire_time': expireTime,
-        'created_at': DateTime.now().millisecondsSinceEpoch,
-      });
-      
-      LoggerUtil.cache('SET_DATABASE', key, value: value);
-    } catch (e) {
-      LoggerUtil.e('设置数据库缓存失败: $key, error: $e');
-    }
+  // 数据库缓存相关方法
+  Future<void> setDatabaseCache(String key, dynamic value, {Duration? expiration}) async {
+    await _databaseCache.set(key, value, expiration: expiration);
   }
   
-  /// 获取数据库缓存
   Future<T?> getDatabaseCache<T>(String key) async {
-    try {
-      final result = await DatabaseManager.instance.query(
-        'cache',
-        where: 'key = ?',
-        whereArgs: [key],
-        limit: 1,
-      );
-      
-      if (result.isEmpty) {
-        LoggerUtil.cache('GET_DATABASE', key, value: 'NOT_FOUND');
-        return null;
-      }
-      
-      final cacheData = result.first;
-      final expireTime = cacheData['expire_time'] as int;
-      
-      if (DateTime.now().millisecondsSinceEpoch > expireTime) {
-        await DatabaseManager.instance.delete(
-          'cache',
-          where: 'key = ?',
-          whereArgs: [key],
-        );
-        LoggerUtil.cache('GET_DATABASE', key, value: 'EXPIRED');
-        return null;
-      }
-      
-      final value = jsonDecode(cacheData['value'] as String);
-      LoggerUtil.cache('GET_DATABASE', key, value: value);
-      return value as T?;
-    } catch (e) {
-      LoggerUtil.e('获取数据库缓存失败: $key, error: $e');
-      return null;
-    }
+    return await _databaseCache.get<T>(key);
   }
   
-  /// 删除数据库缓存
   Future<void> removeDatabaseCache(String key) async {
-    try {
-      await DatabaseManager.instance.delete(
-        'cache',
-        where: 'key = ?',
-        whereArgs: [key],
-      );
-      LoggerUtil.cache('REMOVE_DATABASE', key);
-    } catch (e) {
-      LoggerUtil.e('删除数据库缓存失败: $key, error: $e');
-    }
+    await _databaseCache.remove(key);
   }
   
-  /// 清空数据库缓存
   Future<void> clearDatabaseCache() async {
-    try {
-      await DatabaseManager.instance.delete('cache');
-      LoggerUtil.cache('CLEAR_DATABASE', 'ALL');
-    } catch (e) {
-      LoggerUtil.e('清空数据库缓存失败: $e');
-    }
+    await _databaseCache.clear();
   }
   
   /// 统一缓存接口 - 设置
@@ -341,101 +177,118 @@ class CacheManager {
     }
   }
   
-  /// 清理过期的内存缓存
-  void _cleanExpiredMemoryCache() {
-    final expiredKeys = <String>[];
-    _memoryCache.forEach((key, item) {
-      if (item.isExpired) {
-        expiredKeys.add(key);
-      }
-    });
-    
-    for (final key in expiredKeys) {
-      _memoryCache.remove(key);
-    }
-    
-    if (expiredKeys.isNotEmpty) {
-      LoggerUtil.d('清理过期内存缓存: ${expiredKeys.length}个');
+  /// 清理所有类型的过期缓存
+  Future<void> cleanAllExpired() async {
+    try {
+      _memoryCache.cleanExpired();
+      await _persistentCache.cleanExpired();
+      await _databaseCache.cleanExpired();
+      LoggerUtil.i('所有缓存过期清理完成');
+    } catch (e) {
+      LoggerUtil.e('清理过期缓存失败: $e');
     }
   }
   
-  /// 清理过期的持久化缓存
-  Future<void> _cleanExpiredPersistentCache() async {
+  /// 清理指定类型的过期缓存
+  Future<void> cleanExpired(CacheType type) async {
     try {
-      if (_cacheBox == null) return;
-      
-      final expiredKeys = <String>[];
-      final now = DateTime.now().millisecondsSinceEpoch;
-      
-      for (final key in _cacheBox!.keys) {
-        final cacheDataString = _cacheBox!.get(key);
-        if (cacheDataString != null) {
-          try {
-            final cacheData = jsonDecode(cacheDataString) as Map<String, dynamic>;
-            final expireTime = cacheData['expireTime'] as int?;
-            if (expireTime != null && now > expireTime) {
-              expiredKeys.add(key as String);
-            }
-          } catch (e) {
-            // 数据格式错误，也删除
-            expiredKeys.add(key as String);
-          }
-        }
-      }
-      
-      for (final key in expiredKeys) {
-        await _cacheBox!.delete(key);
-      }
-      
-      if (expiredKeys.isNotEmpty) {
-        LoggerUtil.d('清理过期持久化缓存: ${expiredKeys.length}个');
+      switch (type) {
+        case CacheType.memory:
+          _memoryCache.cleanExpired();
+          break;
+        case CacheType.persistent:
+          await _persistentCache.cleanExpired();
+          break;
+        case CacheType.database:
+          await _databaseCache.cleanExpired();
+          break;
       }
     } catch (e) {
-      LoggerUtil.e('清理过期持久化缓存失败: $e');
+      LoggerUtil.e('清理${type.name}过期缓存失败: $e');
     }
   }
   
-  /// 获取缓存统计信息
-  Map<String, dynamic> getCacheStats() {
+  /// 检查缓存是否存在
+  Future<bool> contains(String key, {CacheType type = CacheType.memory}) async {
+    final cacheManager = getCacheManagerByType(type);
+    return await cacheManager.contains(key);
+  }
+  
+  /// 智能缓存操作
+  Future<void> setSmartCache(
+    String key, 
+    dynamic value, {
+    Duration? expiration,
+    required int dataSize,
+    required bool needsPersistence,
+    required bool frequentAccess,
+    required bool needsQuery,
+  }) async {
+    final cacheManager = getSmartCacheManager(
+      dataSize: dataSize,
+      needsPersistence: needsPersistence,
+      frequentAccess: frequentAccess,
+      needsQuery: needsQuery,
+    );
+    
+    await cacheManager.set(key, value, expiration: expiration);
+    
+    final selectedType = CacheFactory.selectOptimalCacheType(
+      dataSize: dataSize,
+      needsPersistence: needsPersistence,
+      frequentAccess: frequentAccess,
+      needsQuery: needsQuery,
+    );
+    
+    LoggerUtil.i('智能缓存已设置: $key -> ${selectedType.name}');
+  }
+  
+  /// 智能获取缓存
+  Future<T?> getSmartCache<T>(
+    String key, {
+    required int expectedDataSize,
+    required bool needsPersistence,
+    required bool frequentAccess,
+    required bool needsQuery,
+  }) async {
+    final cacheManager = getSmartCacheManager(
+      dataSize: expectedDataSize,
+      needsPersistence: needsPersistence,
+      frequentAccess: frequentAccess,
+      needsQuery: needsQuery,
+    );
+    
+    return await cacheManager.get<T>(key);
+  }
+  
+  /// 获取缓存管理器实例
+  MemoryCacheManager get memoryCache => _memoryCache;
+  PersistentCacheManager get persistentCache => _persistentCache;
+  DatabaseCacheManager get databaseCache => _databaseCache;
+  
+  /// 获取综合缓存统计信息
+  Future<Map<String, dynamic>> getCacheStats() async {
+    final memoryStats = _memoryCache.getStats();
+    final persistentStats = _persistentCache.getStats();
+    final databaseStats = await _databaseCache.getStats();
+    
     return {
-      'memoryCache': {
-        'count': _memoryCache.length,
-        'keys': _memoryCache.keys.toList(),
-      },
-      'persistentCache': {
-        'count': _cacheBox?.length ?? 0,
-        'keys': _cacheBox?.keys.toList() ?? [],
+      'memory': memoryStats,
+      'persistent': persistentStats,
+      'database': databaseStats,
+      'total': {
+        'count': memoryStats['count'] + persistentStats['count'] + databaseStats['count'],
       },
     };
   }
-}
-
-/// 缓存项
-class CacheItem {
-  final dynamic value;
-  final DateTime? expireTime;
-  final DateTime createdAt;
   
-  CacheItem({
-    required this.value,
-    this.expireTime,
-    required this.createdAt,
-  });
-  
-  bool get isExpired {
-    if (expireTime == null) return false;
-    return DateTime.now().isAfter(expireTime!);
+  /// 关闭缓存管理器
+  Future<void> close() async {
+    try {
+      await _persistentCache.close();
+      LoggerUtil.i('统一缓存管理器已关闭');
+    } catch (e) {
+      LoggerUtil.e('关闭统一缓存管理器失败: $e');
+    }
   }
-}
-
-/// 缓存类型
-enum CacheType {
-  /// 内存缓存（最快，但应用重启后丢失）
-  memory,
-  
-  /// 持久化缓存（Hive，快速且持久）
-  persistent,
-  
-  /// 数据库缓存（SQLite，可查询但较慢）
-  database,
 }

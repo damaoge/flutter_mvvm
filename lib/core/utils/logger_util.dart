@@ -1,5 +1,5 @@
 import 'package:logger/logger.dart';
-import '../base/app_config.dart';
+import 'package:flutter_mvvm/core/base/app_config.dart';
 
 /// 日志工具类
 class LoggerUtil {

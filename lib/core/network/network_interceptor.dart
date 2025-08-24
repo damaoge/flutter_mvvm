@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import '../base/app_config.dart';
-import '../storage/storage_manager.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/base/app_config.dart';
+import 'package:flutter_mvvm/core/storage/storage_manager.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// 网络拦截器
 class NetworkInterceptor extends Interceptor {

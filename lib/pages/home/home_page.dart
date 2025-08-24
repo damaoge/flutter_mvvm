@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
-import '../../core/base/base_view.dart';
-import '../../core/base/base_viewmodel.dart';
-import '../../core/utils/logger_util.dart';
-import '../../core/localization/localization_manager.dart';
-import '../../core/screen/screen_adapter.dart';
-import '../../core/theme/theme_manager.dart';
-import '../../core/router/router_manager.dart';
+import 'package:flutter_mvvm/core/base/base_view.dart';
+import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
+import 'package:flutter_mvvm/core/localization/localization_manager.dart';
+import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
+import 'package:flutter_mvvm/core/theme/theme_manager.dart';
 
 /// 首页ViewModel
 class HomeViewModel extends BaseViewModel {
@@ -28,17 +26,12 @@ class HomeViewModel extends BaseViewModel {
 
   /// 加载用户信息
   Future<void> _loadUserInfo() async {
-    try {
-      setLoading(true);
+    await safeExecute(() async {
       // 模拟网络请求
       await Future.delayed(const Duration(seconds: 1));
       _userName = 'Flutter用户';
       notifyListeners();
-    } catch (e) {
-      LoggerUtil.e('加载用户信息失败: $e');
-    } finally {
-      setLoading(false);
-    }
+    });
   }
 
   /// 增加计数
@@ -72,12 +65,12 @@ class HomeViewModel extends BaseViewModel {
 
   /// 跳转到设置页面
   void goToSettings() {
-    RouterManager.instance.push('/settings');
+    navigateTo('/settings');
   }
 
   /// 跳转到个人资料页面
   void goToProfile() {
-    RouterManager.instance.push('/profile');
+    navigateTo('/profile');
   }
 }
 

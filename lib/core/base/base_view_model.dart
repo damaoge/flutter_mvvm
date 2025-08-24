@@ -1,8 +1,17 @@
 import 'package:flutter/foundation.dart';
-import '../utils/logger_util.dart';
+import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
+import 'package:flutter_mvvm/core/permissions/permission_result.dart';
+
+// 导入扩展方法
+import 'package:flutter_mvvm/core/base/extensions/base_view_model_permission_extension.dart';
+import 'package:flutter_mvvm/core/base/extensions/base_view_model_navigation_extension.dart';
+import 'package:flutter_mvvm/core/base/extensions/base_view_model_dialog_extension.dart';
 
 /// ViewModel基类
 /// 提供MVVM架构中ViewModel的基础功能
+/// 包含统一的权限管理、路由跳转、弹窗提示等功能
 abstract class BaseViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool _isDisposed = false;
@@ -68,6 +77,17 @@ abstract class BaseViewModel extends ChangeNotifier {
       return null;
     }
   }
+  
+  // ==================== 权限管理 ====================
+  // 权限相关方法已移至 BaseViewModelPermissionExtension 扩展中
+  
+  // ==================== 路由跳转 ====================
+  // 路由相关方法已移至 BaseViewModelNavigationExtension 扩展中
+  
+  // ==================== 弹窗和提示 ====================
+  // 弹窗和提示相关方法已移至 BaseViewModelDialogExtension 扩展中
+  
+  // ==================== 生命周期 ====================
   
   /// 初始化方法，子类可重写
   void init() {

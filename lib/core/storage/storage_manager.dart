@@ -1,6 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../utils/logger_util.dart';
+import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
 /// 存储管理器
 /// 基于SharedPreferences的轻量级存储解决方案
