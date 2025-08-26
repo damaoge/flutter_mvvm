@@ -6,9 +6,13 @@ import 'package:flutter_mvvm/core/utils/logger_util.dart';
 import 'package:flutter_mvvm/core/localization/localization_manager.dart';
 import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
 import 'package:flutter_mvvm/core/theme/theme_manager.dart';
+import 'package:flutter_mvvm/core/repository/user_repository.dart';
+import 'package:flutter_mvvm/core/di/service_locator.dart';
 
 /// 首页ViewModel
 class HomeViewModel extends BaseViewModel {
+  final IUserRepository _userRepository = getIt<IUserRepository>();
+  
   // 计数器
   int _counter = 0;
   int get counter => _counter;
@@ -16,6 +20,10 @@ class HomeViewModel extends BaseViewModel {
   // 用户信息
   String _userName = '未登录';
   String get userName => _userName;
+  
+  // 当前用户
+  User? _currentUser;
+  User? get currentUser => _currentUser;
 
   @override
   void onInit() {
@@ -27,9 +35,14 @@ class HomeViewModel extends BaseViewModel {
   /// 加载用户信息
   Future<void> _loadUserInfo() async {
     await safeExecute(() async {
-      // 模拟网络请求
-      await Future.delayed(const Duration(seconds: 1));
-      _userName = 'Flutter用户';
+      final isLoggedIn = await _userRepository.isLoggedIn();
+      if (isLoggedIn) {
+        _currentUser = await _userRepository.getCurrentUser();
+        _userName = _currentUser?.name ?? '未知用户';
+      } else {
+        _userName = '未登录';
+        _currentUser = null;
+      }
       notifyListeners();
     });
   }
@@ -71,6 +84,45 @@ class HomeViewModel extends BaseViewModel {
   /// 跳转到个人资料页面
   void goToProfile() {
     navigateTo('/profile');
+  }
+  
+  /// 登录
+  Future<void> login(String email, String password) async {
+    await safeExecute(() async {
+      _currentUser = await _userRepository.login(email, password);
+      if (_currentUser != null) {
+        _userName = _currentUser!.name;
+        showMessage('登录成功');
+      } else {
+        showError('登录失败');
+      }
+      notifyListeners();
+    });
+  }
+  
+  /// 登出
+  Future<void> logout() async {
+    await safeExecute(() async {
+      await _userRepository.logout();
+      _currentUser = null;
+      _userName = '未登录';
+      showMessage('已登出');
+      notifyListeners();
+    });
+  }
+  
+  /// 注册
+  Future<void> register(String name, String email, String password) async {
+    await safeExecute(() async {
+      _currentUser = await _userRepository.register(name, email, password);
+      if (_currentUser != null) {
+        _userName = _currentUser!.name;
+        showMessage('注册成功');
+      } else {
+        showError('注册失败');
+      }
+      notifyListeners();
+    });
   }
 }
 

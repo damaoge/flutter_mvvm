@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
 import 'package:flutter_mvvm/core/utils/logger_util.dart';
-import 'package:flutter_mvvm/core/services/auth_service.dart';
+import 'package:flutter_mvvm/core/repository/user_repository.dart';
 import 'package:flutter_mvvm/core/services/credential_service.dart';
 import 'package:flutter_mvvm/core/services/validation_service.dart';
+import 'package:flutter_mvvm/core/di/service_locator.dart';
 
 /// 登录页面ViewModel
 class LoginViewModel extends BaseViewModel {
-  // 服务实例
-  final AuthService _authService = AuthService.instance;
+  // Repository和服务实例
+  final IUserRepository _userRepository = getIt<IUserRepository>();
   final CredentialService _credentialService = CredentialService.instance;
   final ValidationService _validationService = ValidationService.instance;
 
@@ -78,33 +79,34 @@ class LoginViewModel extends BaseViewModel {
       return;
     }
 
-    try {
-      setLoading(true);
+    final email = emailController.text.trim();
+    final password = passwordController.text;
 
-      final email = emailController.text.trim();
-      final password = passwordController.text;
-
-      // 调用认证服务进行登录
-      final response = await _authService.login(email, password);
-
-      if (response['success'] == true) {
-        // 保存凭据（如果选择记住密码）
-        await _credentialService.saveCredentials(email, password, _rememberPassword);
-
-  showSuccess('登录成功');
+    await safeExecute(() async {
+      LoggerUtil.d('开始登录: $email');
+      
+      // 调用用户Repository登录
+      final user = await _userRepository.login(email, password);
+      
+      if (user != null) {
+        // 保存凭据（如果用户选择记住密码）
+        if (_rememberPassword) {
+          await _credentialService.saveCredentials(email, password);
+        } else {
+          await _credentialService.clearCredentials();
+        }
+        
+        showSuccess('登录成功，欢迎回来 ${user.name}', title: '登录成功');
         
         // 跳转到首页
-        await Future.delayed(const Duration(milliseconds: 500));
         navigateAndClearStack('/home');
       } else {
-        throw Exception('登录失败');
+        showError('登录失败，请检查邮箱和密码', title: '登录失败');
       }
-    } catch (e) {
-      showError('登录失败: ${e.toString()}');
-      LoggerUtil.e('登录失败: $e');
-    } finally {
-      setLoading(false);
-    }
+    }, onError: (error) {
+      LoggerUtil.e('登录失败: $error');
+      showError('登录过程中发生错误，请稍后重试', title: '登录失败');
+    });
   }
 
   /// 跳转到注册页面

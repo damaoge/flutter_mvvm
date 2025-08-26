@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
 import 'package:flutter_mvvm/core/utils/logger_util.dart';
-import 'package:flutter_mvvm/core/services/user_profile_service.dart';
+import 'package:flutter_mvvm/core/repository/user_repository.dart';
 import 'package:flutter_mvvm/models/user_profile.dart';
+import 'package:flutter_mvvm/core/di/service_locator.dart';
 
 /// 个人资料ViewModel
 class ProfileViewModel extends BaseViewModel {
-  // 服务实例
-  final UserProfileService _profileService = UserProfileService.instance;
+  // Repository实例
+  final IUserRepository _userRepository = getIt<IUserRepository>();
 
   // 用户信息
   UserProfile _userProfile = UserProfile.defaultProfile();
   UserProfile get userProfile => _userProfile;
+  
+  // 当前用户
+  User? _currentUser;
+  User? get currentUser => _currentUser;
 
-  String get userName => _userProfile.name;
-  String get userEmail => _userProfile.email;
+  String get userName => _currentUser?.name ?? _userProfile.name;
+  String get userEmail => _currentUser?.email ?? _userProfile.email;
   String get userPhone => _userProfile.maskedPhone;
   String get userAvatar => _userProfile.avatar;
 
@@ -29,14 +34,33 @@ class ProfileViewModel extends BaseViewModel {
   /// 加载用户信息
   Future<void> _loadUserInfo() async {
     await safeExecute(() async {
-      // 模拟网络请求延迟
-      await Future.delayed(const Duration(milliseconds: 500));
+      LoggerUtil.d('加载用户信息');
       
-      final profile = await _profileService.getUserProfile();
-      if (profile != null) {
-        _userProfile = profile;
-        notifyListeners();
+      // 检查是否已登录
+      final isLoggedIn = await _userRepository.isLoggedIn();
+      if (isLoggedIn) {
+        _currentUser = await _userRepository.getCurrentUser();
+        if (_currentUser != null) {
+          // 如果有用户信息，更新UserProfile
+          _userProfile = UserProfile(
+            id: _currentUser!.id,
+            name: _currentUser!.name,
+            email: _currentUser!.email,
+            phone: '', // 这里可以从用户扩展信息获取
+            avatar: '', // 这里可以从用户扩展信息获取
+            bio: '',
+            location: '',
+            website: '',
+            joinDate: _currentUser!.createdAt,
+          );
+        }
       }
+      
+      notifyListeners();
+      LoggerUtil.d('用户信息加载完成: ${userName}');
+    }, onError: (error) {
+      LoggerUtil.e('加载用户信息失败: $error');
+      showError('加载用户信息失败，请稍后重试', title: '加载失败');
     });
   }
 
@@ -76,11 +100,25 @@ class ProfileViewModel extends BaseViewModel {
       content: '确定要退出登录吗？',
       confirmText: '确定',
       cancelText: '取消',
-      onConfirm: () {
-        // 清除用户数据
-        _profileService.clearUserData();
-        // 跳转到登录页面
-        navigateAndClearStack('/login');
+      onConfirm: () async {
+        await safeExecute(() async {
+          LoggerUtil.d('用户退出登录');
+          
+          // 调用用户Repository退出登录
+          await _userRepository.logout();
+          
+          // 清空当前用户信息
+          _currentUser = null;
+          _userProfile = UserProfile.defaultProfile();
+          
+          showSuccess('已退出登录', title: '退出成功');
+          
+          // 跳转到登录页面
+          navigateAndClearStack('/login');
+        }, onError: (error) {
+          LoggerUtil.e('退出登录失败: $error');
+          showError('退出登录失败，请稍后重试', title: '退出失败');
+        });
       },
     );
   }

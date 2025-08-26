@@ -19,12 +19,16 @@ import 'core/router/router_manager.dart';
 import 'core/screen/screen_adapter.dart';
 import 'core/widgets/loading_dialog.dart';
 import 'core/utils/logger_util.dart';
+import 'core/di/service_locator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // 初始化Hive
   await Hive.initFlutter();
+  
+  // 配置依赖注入
+  configureDependencies();
   
   // 初始化核心服务
   await _initCoreServices();
@@ -41,8 +45,8 @@ Future<void> _initCoreServices() async {
     // 初始化日志工具
     LoggerUtil.init();
     
-    // 初始化存储管理器
-    await StorageManager.instance.init();
+    // 注意：StorageManager现在通过DI管理，不需要手动初始化
+    // 其他服务保持原有的单例模式初始化，后续会逐步迁移到DI
     
     // 初始化缓存管理器
     await CacheManager.instance.init();

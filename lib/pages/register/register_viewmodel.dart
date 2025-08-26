@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
 import 'package:flutter_mvvm/core/utils/logger_util.dart';
-import 'package:flutter_mvvm/core/services/auth_service.dart';
+import 'package:flutter_mvvm/core/repository/user_repository.dart';
 import 'package:flutter_mvvm/core/services/validation_service.dart';
+import 'package:flutter_mvvm/core/di/service_locator.dart';
 
 /// 注册页面ViewModel
 class RegisterViewModel extends BaseViewModel {
-  // 服务实例
-  final AuthService _authService = AuthService.instance;
+  // Repository和服务实例
+  final IUserRepository _userRepository = getIt<IUserRepository>();
   final ValidationService _validationService = ValidationService.instance;
 
   // 表单控制器
@@ -69,35 +70,32 @@ class RegisterViewModel extends BaseViewModel {
     }
 
     if (!_agreeToTerms) {
-      showWarning('请先同意用户协议和隐私政策', title: '提示');
+      showError('请先同意用户协议和隐私政策', title: '注册失败');
       return;
     }
 
-    try {
-      setLoading(true);
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
 
-      final name = nameController.text.trim();
-      final email = emailController.text.trim();
-      final password = passwordController.text;
-
-      // 调用认证服务进行注册
-      final response = await _authService.register(name, email, password);
-
-      if (response['success'] == true) {
-        showSuccess('注册成功');
+    await safeExecute(() async {
+      LoggerUtil.d('开始注册: $email');
+      
+      // 调用用户Repository注册
+      final user = await _userRepository.register(name, email, password);
+      
+      if (user != null) {
+        showSuccess('注册成功，欢迎 ${user.name}！', title: '注册成功');
         
-        // 跳转到登录页面
-        await Future.delayed(const Duration(milliseconds: 500));
-        navigateAndClearStack('/login');
+        // 注册成功后直接跳转到首页
+        navigateAndClearStack('/home');
       } else {
-        throw Exception('注册失败');
+        showError('注册失败，请稍后重试', title: '注册失败');
       }
-    } catch (e) {
-      showError('注册失败: ${e.toString()}');
-      LoggerUtil.e('注册失败: $e');
-    } finally {
-      setLoading(false);
-    }
+    }, onError: (error) {
+      LoggerUtil.e('注册失败: $error');
+      showError('注册过程中发生错误，请稍后重试', title: '注册失败');
+    });
   }
 
   /// 跳转到登录页面

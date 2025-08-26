@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_mvvm/core/base/base_view.dart';
 import 'package:flutter_mvvm/core/base/base_viewmodel.dart';
 import 'package:flutter_mvvm/core/utils/logger_util.dart';
 import 'package:flutter_mvvm/core/screen/screen_adapter.dart';
+import 'package:flutter_mvvm/core/repository/user_repository.dart';
+import 'package:flutter_mvvm/core/di/service_locator.dart';
 import 'package:flutter_mvvm/core/base/app_config.dart';
 
 /// 启动页ViewModel
 class SplashViewModel extends BaseViewModel {
+  final IUserRepository _userRepository = getIt<IUserRepository>();
+  
   @override
   void onInit() {
     super.onInit();
@@ -39,9 +42,12 @@ class SplashViewModel extends BaseViewModel {
 
   /// 检查登录状态
   Future<bool> _checkLoginStatus() async {
-    // 这里可以检查本地存储的登录信息
-    // 暂时返回false
-    return false;
+    try {
+      return await _userRepository.isLoggedIn();
+    } catch (e) {
+      LoggerUtil.e('检查登录状态失败: $e');
+      return false;
+    }
   }
 }
 

@@ -1,14 +1,24 @@
-import 'package:flutter_mvvm/core/managers/storage_manager.dart';
+import 'package:injectable/injectable.dart';
+import 'package:flutter_mvvm/core/storage/storage_manager.dart';
 import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
-/// 认证服务
-/// 负责处理用户登录、注册、登出等认证相关操作
-class AuthService {
-  static final AuthService _instance = AuthService._internal();
-  factory AuthService() => _instance;
-  AuthService._internal();
+/// 认证服务接口
+abstract class IAuthService {
+  Future<Map<String, dynamic>> login(String email, String password);
+  Future<Map<String, dynamic>> register(String name, String email, String password);
+  Future<void> logout();
+  Future<bool> isLoggedIn();
+  Future<Map<String, dynamic>?> getCurrentUser();
+  Future<String?> getUserToken();
+}
 
-  static AuthService get instance => _instance;
+/// 认证服务实现
+/// 负责处理用户登录、注册、登出等认证相关操作
+@LazySingleton(as: IAuthService)
+class AuthService implements IAuthService {
+  final IStorageManager _storageManager;
+  
+  AuthService(this._storageManager);
 
   /// 登录
   Future<Map<String, dynamic>> login(String email, String password) async {
@@ -99,8 +109,8 @@ class AuthService {
       LoggerUtil.d('用户登出');
       
       // 清除本地存储的用户信息
-      await StorageManager.instance.remove('user_token');
-      await StorageManager.instance.remove('user_info');
+      await _storageManager.remove('user_token');
+      await _storageManager.remove('user_info');
       
       LoggerUtil.d('用户登出成功');
     } catch (e) {
@@ -112,7 +122,7 @@ class AuthService {
   /// 检查是否已登录
   Future<bool> isLoggedIn() async {
     try {
-      final token = await StorageManager.instance.getString('user_token');
+      final token = await _storageManager.getString('user_token');
       return token != null && token.isNotEmpty;
     } catch (e) {
       LoggerUtil.e('检查登录状态失败: $e');
@@ -123,7 +133,7 @@ class AuthService {
   /// 获取当前用户信息
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {
-      return await StorageManager.instance.getJson('user_info');
+      return await _storageManager.getJson('user_info');
     } catch (e) {
       LoggerUtil.e('获取用户信息失败: $e');
       return null;
@@ -133,7 +143,7 @@ class AuthService {
   /// 获取用户Token
   Future<String?> getUserToken() async {
     try {
-      return await StorageManager.instance.getString('user_token');
+      return await _storageManager.getString('user_token');
     } catch (e) {
       LoggerUtil.e('获取用户Token失败: $e');
       return null;
@@ -142,7 +152,7 @@ class AuthService {
 
   /// 保存登录信息
   Future<void> _saveLoginInfo(Map<String, dynamic> data) async {
-    await StorageManager.instance.setString('user_token', data['token']);
-    await StorageManager.instance.setJson('user_info', data['user']);
+    await _storageManager.setString('user_token', data['token']);
+    await _storageManager.setJson('user_info', data['user']);
   }
 }

@@ -1,40 +1,43 @@
+import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:flutter_mvvm/core/utils/logger_util.dart';
 
-/// 存储管理器
+/// 存储管理器接口
+abstract class IStorageManager {
+  Future<bool> setString(String key, String value);
+  String? getString(String key, {String? defaultValue});
+  Future<bool> setInt(String key, int value);
+  int? getInt(String key, {int? defaultValue});
+  Future<bool> setDouble(String key, double value);
+  double? getDouble(String key, {double? defaultValue});
+  Future<bool> setBool(String key, bool value);
+  bool? getBool(String key, {bool? defaultValue});
+  Future<bool> setStringList(String key, List<String> value);
+  List<String>? getStringList(String key, {List<String>? defaultValue});
+  Future<bool> setJson(String key, Map<String, dynamic> value);
+  Map<String, dynamic>? getJson(String key);
+  Future<bool> remove(String key);
+  Future<bool> clear();
+  bool containsKey(String key);
+  Set<String> getKeys();
+}
+
+/// 存储管理器实现
 /// 基于SharedPreferences的轻量级存储解决方案
-class StorageManager {
-  static final StorageManager _instance = StorageManager._internal();
-  static StorageManager get instance => _instance;
+@LazySingleton(as: IStorageManager)
+class StorageManager implements IStorageManager {
+  final SharedPreferences _prefs;
   
-  SharedPreferences? _prefs;
+  StorageManager(this._prefs);
   
-  StorageManager._internal();
-  
-  /// 初始化存储管理器
-  Future<void> init() async {
-    try {
-      _prefs = await SharedPreferences.getInstance();
-      LoggerUtil.i('存储管理器初始化完成');
-    } catch (e) {
-      LoggerUtil.e('存储管理器初始化失败: $e');
-      rethrow;
-    }
-  }
-  
-  /// 确保已初始化
-  void _ensureInitialized() {
-    if (_prefs == null) {
-      throw Exception('StorageManager未初始化，请先调用init()方法');
-    }
-  }
+
   
   /// 存储字符串
+  @override
   Future<bool> setString(String key, String value) async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.setString(key, value);
+      final result = await _prefs.setString(key, value);
       LoggerUtil.d('存储字符串: $key = $value');
       return result;
     } catch (e) {
@@ -44,10 +47,10 @@ class StorageManager {
   }
   
   /// 获取字符串
+  @override
   String? getString(String key, {String? defaultValue}) {
-    _ensureInitialized();
     try {
-      final value = _prefs!.getString(key) ?? defaultValue;
+      final value = _prefs.getString(key) ?? defaultValue;
       LoggerUtil.d('获取字符串: $key = $value');
       return value;
     } catch (e) {
@@ -57,10 +60,10 @@ class StorageManager {
   }
   
   /// 存储整数
+  @override
   Future<bool> setInt(String key, int value) async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.setInt(key, value);
+      final result = await _prefs.setInt(key, value);
       LoggerUtil.d('存储整数: $key = $value');
       return result;
     } catch (e) {
@@ -70,10 +73,10 @@ class StorageManager {
   }
   
   /// 获取整数
+  @override
   int? getInt(String key, {int? defaultValue}) {
-    _ensureInitialized();
     try {
-      final value = _prefs!.getInt(key) ?? defaultValue;
+      final value = _prefs.getInt(key) ?? defaultValue;
       LoggerUtil.d('获取整数: $key = $value');
       return value;
     } catch (e) {
@@ -83,10 +86,10 @@ class StorageManager {
   }
   
   /// 存储双精度浮点数
+  @override
   Future<bool> setDouble(String key, double value) async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.setDouble(key, value);
+      final result = await _prefs.setDouble(key, value);
       LoggerUtil.d('存储双精度浮点数: $key = $value');
       return result;
     } catch (e) {
@@ -96,10 +99,10 @@ class StorageManager {
   }
   
   /// 获取双精度浮点数
+  @override
   double? getDouble(String key, {double? defaultValue}) {
-    _ensureInitialized();
     try {
-      final value = _prefs!.getDouble(key) ?? defaultValue;
+      final value = _prefs.getDouble(key) ?? defaultValue;
       LoggerUtil.d('获取双精度浮点数: $key = $value');
       return value;
     } catch (e) {
@@ -109,10 +112,10 @@ class StorageManager {
   }
   
   /// 存储布尔值
+  @override
   Future<bool> setBool(String key, bool value) async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.setBool(key, value);
+      final result = await _prefs.setBool(key, value);
       LoggerUtil.d('存储布尔值: $key = $value');
       return result;
     } catch (e) {
@@ -122,10 +125,10 @@ class StorageManager {
   }
   
   /// 获取布尔值
+  @override
   bool? getBool(String key, {bool? defaultValue}) {
-    _ensureInitialized();
     try {
-      final value = _prefs!.getBool(key) ?? defaultValue;
+      final value = _prefs.getBool(key) ?? defaultValue;
       LoggerUtil.d('获取布尔值: $key = $value');
       return value;
     } catch (e) {
@@ -135,10 +138,10 @@ class StorageManager {
   }
   
   /// 存储字符串列表
+  @override
   Future<bool> setStringList(String key, List<String> value) async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.setStringList(key, value);
+      final result = await _prefs.setStringList(key, value);
       LoggerUtil.d('存储字符串列表: $key = $value');
       return result;
     } catch (e) {
@@ -148,10 +151,10 @@ class StorageManager {
   }
   
   /// 获取字符串列表
+  @override
   List<String>? getStringList(String key, {List<String>? defaultValue}) {
-    _ensureInitialized();
     try {
-      final value = _prefs!.getStringList(key) ?? defaultValue;
+      final value = _prefs.getStringList(key) ?? defaultValue;
       LoggerUtil.d('获取字符串列表: $key = $value');
       return value;
     } catch (e) {
@@ -161,6 +164,7 @@ class StorageManager {
   }
   
   /// 存储JSON对象
+  @override
   Future<bool> setJson(String key, Map<String, dynamic> value) async {
     try {
       final jsonString = jsonEncode(value);
@@ -172,22 +176,23 @@ class StorageManager {
   }
   
   /// 获取JSON对象
-  Map<String, dynamic>? getJson(String key, {Map<String, dynamic>? defaultValue}) {
+  @override
+  Map<String, dynamic>? getJson(String key) {
     try {
       final jsonString = getString(key);
-      if (jsonString == null) return defaultValue;
+      if (jsonString == null) return null;
       return jsonDecode(jsonString) as Map<String, dynamic>;
     } catch (e) {
       LoggerUtil.e('获取JSON对象失败: $key, error: $e');
-      return defaultValue;
+      return null;
     }
   }
   
   /// 检查键是否存在
+  @override
   bool containsKey(String key) {
-    _ensureInitialized();
     try {
-      final exists = _prefs!.containsKey(key);
+      final exists = _prefs.containsKey(key);
       LoggerUtil.d('检查键是否存在: $key = $exists');
       return exists;
     } catch (e) {
@@ -197,10 +202,10 @@ class StorageManager {
   }
   
   /// 删除指定键
+  @override
   Future<bool> remove(String key) async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.remove(key);
+      final result = await _prefs.remove(key);
       LoggerUtil.d('删除键: $key');
       return result;
     } catch (e) {
@@ -210,10 +215,10 @@ class StorageManager {
   }
   
   /// 清空所有数据
+  @override
   Future<bool> clear() async {
-    _ensureInitialized();
     try {
-      final result = await _prefs!.clear();
+      final result = await _prefs.clear();
       LoggerUtil.d('清空所有存储数据');
       return result;
     } catch (e) {
@@ -223,10 +228,10 @@ class StorageManager {
   }
   
   /// 获取所有键
+  @override
   Set<String> getKeys() {
-    _ensureInitialized();
     try {
-      final keys = _prefs!.getKeys();
+      final keys = _prefs.getKeys();
       LoggerUtil.d('获取所有键: $keys');
       return keys;
     } catch (e) {
